@@ -1,0 +1,21 @@
+.mobile-lab-note {
+  display: none;
+}
+
+@media (max-width: 650px) {
+  .login-panel {
+    position: relative;
+    padding-bottom: 72px;
+  }
+
+  .mobile-lab-note {
+    display: block;
+    position: absolute;
+    bottom: 22px;
+    left: 20px;
+    right: 20px;
+    color: #879795;
+    font-size: 11px;
+    text-align: center;
+  }
+}

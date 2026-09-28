@@ -1,0 +1,70 @@
+name: peoplematrix-lab
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: peoplematrix
+      POSTGRES_DB: peoplematrix_lab
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Generate a unique POSTGRES_PASSWORD in .env}
+    volumes:
+      - lab_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U peoplematrix -d peoplematrix_lab"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    networks:
+      - lab_internal
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    environment:
+      NODE_ENV: production
+      PORT: "8080"
+      DATABASE_URL: postgresql://peoplematrix:${POSTGRES_PASSWORD:?Generate a unique POSTGRES_PASSWORD in .env}@postgres:5432/peoplematrix_lab
+      SESSION_SECRET: ${SESSION_SECRET:?Generate a unique SESSION_SECRET in .env}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/api/healthz').then(r => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 90s
+    networks:
+      - lab_internal
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${LAB_PORT:-8088}:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/login"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    networks:
+      - edge
+      - lab_internal
+    restart: unless-stopped
+
+networks:
+  edge:
+    driver: bridge
+  lab_internal:
+    driver: bridge
+    internal: true
+
+volumes:
+  lab_data:

@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "PeopleMatrix"
+description = "A synthetic-data HR workspace for authorised security assessment, with role-aware employee, manager, HR, and system administration experiences connected to the PeopleMatrix API."
+version = "1.0.0"
+id = "artifacts/peoplematrix"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 19846
+
+[services.development]
+run = "pnpm --filter @workspace/peoplematrix run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/peoplematrix", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/peoplematrix/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19846"
+BASE_PATH = "/"

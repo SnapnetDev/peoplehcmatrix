@@ -1,0 +1,2 @@
+- [Workspace package installation](workspace-package-installation.md) — package installer callback cannot target pnpm workspace packages with filters; use filtered pnpm add when needed.
+- [Vite private-file boundary](vite-private-file-boundary.md) — strict mode alone auto-allows the pnpm workspace root; narrowly allow serving paths for every preview server.

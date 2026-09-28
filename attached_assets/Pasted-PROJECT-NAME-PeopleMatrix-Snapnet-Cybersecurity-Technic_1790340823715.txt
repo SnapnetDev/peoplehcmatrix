@@ -1,0 +1,994 @@
+PROJECT NAME
+PeopleMatrix — Snapnet Cybersecurity Technical Assessment Lab
+
+ROLE
+Act as a senior full-stack software engineer, application-security engineer, DevSecOps engineer, and cybersecurity training-lab designer.
+
+Build a complete, self-contained, intentionally vulnerable HR SaaS application called “PeopleMatrix”.
+
+IMPORTANT CONTEXT
+PeopleMatrix is NOT a production application.
+
+It is an intentionally vulnerable cybersecurity training and recruitment-assessment application that will be used by Snapnet Limited to evaluate cybersecurity candidates in an authorised, isolated lab environment.
+
+All users, employees, payroll information, NINs, bank accounts, emails, addresses and other records MUST be synthetic/fictitious.
+
+The application must:
+1. Look and behave like a realistic HR SaaS product.
+2. Contain exactly eight deliberately planted security weaknesses described below.
+3. Include realistic non-vulnerable functionality so candidates must investigate rather than simply scan obvious endpoints.
+4. Support web and REST API penetration testing.
+5. Be resettable between candidates.
+6. Run completely through Docker Compose.
+7. Never require real production credentials or external production systems.
+8. Be suitable for deployment on an isolated AWS EC2 or Azure VM.
+9. Include a separate assessor answer key that is never exposed through the candidate-facing application.
+10. Include clear warnings that the application must not be exposed directly to the public Internet.
+
+Do NOT introduce additional intentional vulnerabilities beyond the eight specified below.
+
+==================================================
+1. REQUIRED TECHNOLOGY STACK
+==================================================
+
+Build the solution using:
+
+Frontend:
+- React
+- TypeScript
+- Vite
+- Responsive desktop-first UI
+- Clean professional enterprise HR interface
+
+Backend:
+- Node.js
+- Express
+- TypeScript
+- REST API
+
+Database:
+- PostgreSQL
+
+Authentication:
+- JWT-based authentication
+
+Infrastructure:
+- Docker
+- Docker Compose
+
+Testing:
+- Jest or equivalent
+- API integration tests
+
+Documentation:
+- Markdown
+
+Avoid unnecessary third-party dependencies.
+
+Repository structure should approximately be:
+
+peoplematrix/
+  frontend/
+  backend/
+  database/
+  scripts/
+  tests/
+  assessor/
+  docs/
+  docker-compose.yml
+  .env.example
+  README.md
+  SECURITY-LAB-NOTICE.md
+
+==================================================
+2. APPLICATION PURPOSE
+==================================================
+
+PeopleMatrix should simulate a medium-sized Nigerian organisation's HR system.
+
+The application should contain the following modules:
+
+1. Login
+2. Employee Dashboard
+3. Employee Directory
+4. Employee Profile
+5. Payroll
+6. Leave Management
+7. Performance Management
+8. Manager Dashboard
+9. HR Administration
+10. User Administration
+11. Reports
+12. Notifications
+
+The UI should look realistic enough that a cybersecurity candidate has to understand the application before testing it.
+
+Do NOT visually identify vulnerable functionality.
+
+==================================================
+3. USER ROLES
+==================================================
+
+Implement four roles:
+
+EMPLOYEE
+
+Can:
+- view own profile;
+- view own payroll;
+- submit leave requests;
+- view own leave;
+- view own performance records;
+- update limited personal information.
+
+MANAGER
+
+Can do everything an Employee can, plus:
+- view direct reports;
+- approve/reject leave for direct reports;
+- enter performance comments for direct reports;
+- view limited team information.
+
+HR_ADMIN
+
+Can:
+- view employee records;
+- administer leave;
+- administer performance records;
+- view payroll information;
+- create/update employees;
+- run HR reports.
+
+SYSTEM_ADMIN
+
+Can:
+- administer users;
+- assign roles;
+- configure selected application settings;
+- view audit information.
+
+Implement proper authorization for normal functionality except where a deliberate vulnerability is explicitly required below.
+
+==================================================
+4. SYNTHETIC DATA
+==================================================
+
+Generate 75 fictitious employees.
+
+Use obviously fictional but realistic Nigerian-style names.
+
+Do NOT use actual employee or public-person data.
+
+Include departments such as:
+
+- Finance
+- Human Resources
+- Information Technology
+- Sales
+- Marketing
+- Operations
+- Legal
+- Procurement
+- Customer Service
+- Internal Audit
+
+Each employee should have synthetic:
+
+- Employee ID
+- First name
+- Last name
+- Email
+- Phone
+- Job title
+- Department
+- Manager
+- Employment date
+- Employment status
+- Salary
+- Bank name
+- Synthetic bank account number
+- Synthetic NIN-like identifier
+- Address
+- Emergency contact
+- Leave balance
+- Leave history
+- Performance records
+
+All sensitive identifiers must be generated dummy values.
+
+Put a visible footer somewhere appropriate saying:
+
+“PeopleMatrix Security Lab — Synthetic Data Only”
+
+Do not reveal vulnerability information in the footer.
+
+==================================================
+5. TEST ACCOUNTS
+==================================================
+
+Create documented lab accounts.
+
+Employee:
+
+employee1@peoplematrix.test
+
+Manager:
+
+manager1@peoplematrix.test
+
+HR Administrator:
+
+hradmin@peoplematrix.test
+
+System Administrator:
+
+sysadmin@peoplematrix.test
+
+Use lab-only passwords defined in the seed/configuration documentation.
+
+Passwords must NOT be reused from any real system.
+
+The README for the lab administrator may list the credentials.
+
+Candidate instructions should normally provide only Employee and Manager credentials.
+
+==================================================
+6. NORMAL API STRUCTURE
+==================================================
+
+Create realistic REST APIs including:
+
+POST /api/v1/auth/login
+POST /api/v1/auth/logout
+
+GET /api/v1/me
+
+GET /api/v1/employees
+GET /api/v1/employees/:id
+PUT /api/v1/employees/:id
+
+GET /api/v1/employees/:id/payroll
+
+GET /api/v1/payroll
+
+GET /api/v1/leave
+POST /api/v1/leave
+PUT /api/v1/leave/:id
+
+GET /api/v1/performance
+POST /api/v1/performance/comments
+
+GET /api/v1/reports
+
+GET /api/v1/admin/users
+POST /api/v1/admin/users
+PUT /api/v1/admin/users/:id
+
+GET /api/v1/audit
+
+Add additional sensible endpoints where required.
+
+Create an OpenAPI/Swagger specification for the application.
+
+Do not label vulnerable endpoints as vulnerable.
+
+==================================================
+7. DELIBERATELY PLANTED VULNERABILITIES
+==================================================
+
+IMPORTANT:
+
+Implement exactly the following eight deliberate vulnerabilities.
+
+Do not accidentally introduce additional vulnerabilities elsewhere.
+
+Every vulnerability must:
+- be reproducible;
+- use synthetic data only;
+- be documented privately in assessor/ANSWER_KEY.md;
+- have a corresponding remediation documented;
+- have an automated verification test for lab maintainers where practical.
+
+----------------------------------------------
+VULNERABILITY 1
+BOLA / IDOR — PAYROLL API
+----------------------------------------------
+
+Create a broken object-level authorization vulnerability in:
+
+GET /api/v1/employees/:id/payroll
+
+Normal behaviour should allow an employee to retrieve their own payroll information.
+
+However, deliberately make the vulnerable endpoint verify only that the requester is authenticated.
+
+It should fail to verify that the requested employee ID belongs to the authenticated user or is otherwise authorised.
+
+Example conceptual behaviour:
+
+Employee 1048 legitimately requests:
+
+GET /api/v1/employees/1048/payroll
+
+and receives their payroll.
+
+If they change 1048 to 1049, the vulnerable API should return employee 1049's synthetic payroll record.
+
+Do NOT provide a bulk enumeration endpoint.
+
+The candidate should discover and validate this manually.
+
+Assessor classification:
+
+Broken Object Level Authorization / IDOR.
+
+Remediation:
+Implement server-side object-level authorization based on authenticated identity and permitted relationships/roles.
+
+----------------------------------------------
+VULNERABILITY 2
+BROKEN FUNCTION LEVEL AUTHORIZATION
+----------------------------------------------
+
+Endpoint:
+
+POST /api/v1/admin/users
+
+This endpoint is intended for SYSTEM_ADMIN only.
+
+Deliberately implement authentication but omit the required server-side SYSTEM_ADMIN role authorization check for this specific endpoint.
+
+A normal authenticated Employee should therefore be able to invoke the administrative function if they discover the endpoint.
+
+The UI must NOT expose the System Administration menu to employees.
+
+This forces candidates to distinguish UI restrictions from server-side authorization.
+
+Remediation:
+Implement explicit server-side RBAC/authorization middleware.
+
+----------------------------------------------
+VULNERABILITY 3
+SQL INJECTION
+----------------------------------------------
+
+Create one deliberately vulnerable employee-search/filter endpoint.
+
+For example:
+
+GET /api/v1/employees/search?department=
+
+Implement this specific endpoint using unsafe query construction so that its parameter is SQL injectable.
+
+Keep all other database queries parameterized.
+
+The vulnerability must exist only inside the isolated lab database.
+
+The candidate should be able to manually establish that SQL injection exists without needing destructive operations.
+
+Do NOT provide functionality that encourages destructive SQL commands.
+
+Remediation:
+Parameterized queries/prepared statements, input validation and least-privileged DB credentials.
+
+----------------------------------------------
+VULNERABILITY 4
+STORED CROSS-SITE SCRIPTING
+----------------------------------------------
+
+Implement a stored XSS weakness in:
+
+Performance Comments
+
+A manager can enter a performance comment for an employee.
+
+For this specific field, deliberately store and render the comment without appropriate output encoding/sanitization.
+
+The vulnerable payload should execute when the affected performance record is viewed in the lab browser.
+
+All other user-generated content should be safely encoded.
+
+Remediation:
+Context-sensitive output encoding/sanitization and appropriate Content Security Policy.
+
+----------------------------------------------
+VULNERABILITY 5
+WEAK SESSION/TOKEN INVALIDATION
+----------------------------------------------
+
+Use JWT authentication.
+
+Deliberately implement logout such that the client removes its local token but the server does not revoke or invalidate the issued token.
+
+Therefore, a previously captured token should remain valid until expiration even after the user logs out.
+
+Use a reasonable lab token lifetime.
+
+Do NOT introduce weak JWT signing secrets or algorithm confusion.
+
+The vulnerability being tested is specifically insufficient server-side session/token invalidation.
+
+Remediation:
+Appropriate token revocation/session management, short-lived access tokens and controlled refresh-token lifecycle.
+
+----------------------------------------------
+VULNERABILITY 6
+EXCESSIVE DATA EXPOSURE
+----------------------------------------------
+
+Create an employee-profile API used by the frontend.
+
+For a normal employee-directory request, deliberately return more information in the API response than the UI displays.
+
+Example fields:
+
+name
+email
+department
+jobTitle
+
+plus unnecessary:
+
+salary
+syntheticNIN
+bankAccount
+internalRole
+
+The React UI should display only the normal directory fields.
+
+The sensitive synthetic fields should nevertheless be visible in the underlying API response.
+
+Remediation:
+Server-side response DTOs/data minimization and field-level authorization.
+
+----------------------------------------------
+VULNERABILITY 7
+SECURITY MISCONFIGURATION
+----------------------------------------------
+
+Introduce a limited set of related application-security misconfigurations that together count as ONE finding.
+
+Use:
+
+- verbose application error messages on one API route;
+- unnecessary server/version information;
+- one important missing browser security header.
+
+Do NOT disable all security headers.
+
+Do NOT introduce dangerous infrastructure-level configuration.
+
+The candidate should recognise these as security-hardening issues rather than exaggerating their severity.
+
+Remediation:
+Production-safe error handling, removal of unnecessary version disclosure and appropriate security headers.
+
+----------------------------------------------
+VULNERABILITY 8
+CONTROLLED FALSE POSITIVE / NON-EXPLOITABLE FINDING
+----------------------------------------------
+
+Create a condition likely to be flagged by an automated scanner but which is not practically exploitable in the implemented context.
+
+The purpose is to determine whether candidates validate automated findings before reporting them.
+
+Document exactly why it is a false positive/non-exploitable condition in assessor/ANSWER_KEY.md.
+
+Do not make this ambiguous to the assessor.
+
+The candidate should receive reduced marks if they report the scanner output as a confirmed high/critical vulnerability without validation.
+
+==================================================
+8. SAFE FUNCTIONALITY
+==================================================
+
+The rest of the application should follow reasonable security practices.
+
+Examples:
+
+- password hashes using bcrypt or Argon2;
+- parameterized database queries except the deliberate SQLi;
+- RBAC except the deliberate BFLA;
+- output encoding except the deliberate stored XSS;
+- reasonable password policy;
+- normal audit logging;
+- no hard-coded production secrets;
+- no command injection;
+- no arbitrary file upload;
+- no SSRF;
+- no remote code execution;
+- no path traversal;
+- no insecure deserialization;
+- no real third-party integrations.
+
+This is important because the assessment should test the eight intended weaknesses rather than accidental coding defects.
+
+==================================================
+9. REALISTIC DISTRACTIONS
+==================================================
+
+Create normal application behaviours that candidates may initially investigate but which are NOT vulnerabilities.
+
+Examples:
+
+- a correctly protected HR report;
+- a properly authorized manager-only endpoint;
+- correctly parameterized search functionality elsewhere;
+- properly encoded profile fields;
+- a normal 404 response;
+- failed authentication rate limiting;
+- secure password hashing;
+- properly protected audit endpoint.
+
+The purpose is to require candidates to validate findings rather than assume everything is vulnerable.
+
+==================================================
+10. AUDIT LOGGING
+==================================================
+
+Create audit logging for important application events:
+
+- successful login;
+- failed login;
+- profile access;
+- payroll access;
+- leave request;
+- leave approval;
+- performance update;
+- administrative action.
+
+Store:
+
+timestamp
+user
+source IP where available
+HTTP method
+endpoint
+action
+status
+
+Create an assessor-accessible method to review these logs after the exercise.
+
+This will allow assessors to see what the candidate actually tested.
+
+Do not expose the assessor interface to candidate accounts.
+
+==================================================
+11. ASSESSOR ANSWER KEY
+==================================================
+
+Create:
+
+assessor/ANSWER_KEY.md
+
+This file must NOT be served by the application.
+
+For each of the eight vulnerabilities include:
+
+1. Vulnerability number
+2. Name
+3. OWASP category where applicable
+4. Location/endpoint
+5. Required user role
+6. Discovery approach
+7. Safe reproduction procedure
+8. Expected evidence
+9. Business impact
+10. Suggested severity
+11. Why that severity is appropriate
+12. Recommended remediation
+13. Suggested scoring points
+14. Common candidate mistakes
+
+For the false-positive scenario explain:
+
+- what scanner behaviour may flag it;
+- why it is not actually exploitable;
+- how a competent tester should validate it.
+
+==================================================
+12. ASSESSOR SCORING GUIDE
+==================================================
+
+Create:
+
+assessor/SCORING_GUIDE.md
+
+Total VAPT score = 100.
+
+Suggested allocation:
+
+Methodology & scoping              10
+Attack-surface mapping             10
+BOLA/IDOR                          15
+Broken function authorization      10
+SQL injection                      15
+Stored XSS                         10
+Session/token weakness             10
+Excessive data exposure             5
+Security misconfiguration           5
+False-positive handling             5
+Evidence/report quality              5
+
+Total                               100
+
+Pass mark:
+70%
+
+Also define critical behaviours.
+
+Positive:
+- confirms scope;
+- maps application before attacking;
+- combines manual and automated testing;
+- validates findings;
+- captures reproducible evidence;
+- minimises unnecessary access to sensitive records;
+- explains business impact;
+- remains within rules of engagement.
+
+Negative:
+- blindly reports scanner output;
+- attempts destructive actions;
+- accesses unnecessary volumes of records;
+- ignores authorization boundaries;
+- cannot distinguish VA from penetration testing;
+- requires assessor guidance to decide basic testing steps.
+
+==================================================
+13. CANDIDATE BRIEF
+==================================================
+
+Create:
+
+docs/CANDIDATE_BRIEF.md
+
+It should say approximately:
+
+“You have been engaged to perform a controlled security assessment of PeopleMatrix, a synthetic HR SaaS application.
+
+Your objective is to identify, safely validate, assess and document material security vulnerabilities.
+
+You are authorised to test only the supplied PeopleMatrix environment.
+
+You may perform:
+- web application testing;
+- API testing;
+- authentication testing;
+- authorization testing;
+- controlled vulnerability validation.
+
+You must NOT:
+- perform denial-of-service testing;
+- deliberately destroy data;
+- attack infrastructure outside the supplied environment;
+- use discovered access to attack other systems;
+- intentionally disrupt the assessment environment.
+
+At completion provide:
+- executive summary;
+- vulnerability findings;
+- evidence;
+- severity;
+- business impact;
+- remediation recommendations.”
+
+Do NOT tell candidates:
+- how many vulnerabilities exist;
+- vulnerability categories;
+- affected endpoints;
+- exploitation paths.
+
+==================================================
+14. VAPT REPORT TEMPLATE
+==================================================
+
+Create:
+
+docs/VAPT_REPORT_TEMPLATE.md
+
+Include:
+
+Executive Summary
+
+Scope
+
+Methodology
+
+Risk Rating Method
+
+Findings Summary
+
+For each finding:
+
+Reference
+Title
+Severity
+Affected Component
+Description
+Evidence
+Reproduction Steps
+Business Impact
+Technical Impact
+Recommendation
+
+Include:
+
+Conclusion
+Retest Status
+
+==================================================
+15. RESET CAPABILITY
+==================================================
+
+Create a simple reset mechanism.
+
+For example:
+
+docker compose down -v
+docker compose up --build -d
+
+OR:
+
+./scripts/reset-lab.sh
+
+The reset process must:
+
+- remove candidate-created data;
+- recreate the database;
+- reseed all 75 employees;
+- restore original test accounts;
+- restore the eight deliberate vulnerabilities;
+- clear audit logs;
+- return the environment to a known state.
+
+Document the procedure.
+
+==================================================
+16. DOCKER DEPLOYMENT
+==================================================
+
+Create:
+
+docker-compose.yml
+
+Services:
+
+frontend
+backend
+postgres
+
+Use an internal Docker network.
+
+Expose only the minimum port required to access the application.
+
+Provide:
+
+.env.example
+
+Do not place real secrets in the repository.
+
+Generate development/lab secrets during setup or document how the administrator creates them.
+
+Include health checks.
+
+==================================================
+17. CLOUD DEPLOYMENT DOCUMENTATION
+==================================================
+
+Create:
+
+docs/AZURE_DEPLOYMENT.md
+docs/AWS_DEPLOYMENT.md
+
+The documentation should explain deployment to a single lab VM.
+
+IMPORTANT SECURITY REQUIREMENT:
+
+The deliberately vulnerable application MUST NOT be publicly exposed.
+
+Recommend:
+
+Azure:
+- isolated VNet/subnet;
+- NSG restricting access to known assessment IP/VPN;
+- no unnecessary inbound ports;
+- VM used only for the lab.
+
+AWS:
+- isolated VPC/subnet;
+- Security Group restricting access to known assessment IP/VPN;
+- no unnecessary inbound ports;
+- EC2 instance dedicated to the lab.
+
+Include a prominent warning:
+
+“THIS APPLICATION IS INTENTIONALLY VULNERABLE. DO NOT EXPOSE IT TO THE PUBLIC INTERNET OR CONNECT IT TO PRODUCTION SYSTEMS.”
+
+==================================================
+18. ADMINISTRATOR README
+==================================================
+
+Create a comprehensive README.md covering:
+
+1. Purpose
+2. Architecture
+3. Prerequisites
+4. Installation
+5. Docker startup
+6. Test credentials
+7. Reset procedure
+8. Candidate preparation
+9. Assessor workflow
+10. Troubleshooting
+11. Security warning
+
+Include architecture diagram using Mermaid.
+
+Example conceptual architecture:
+
+Candidate Browser
+       |
+       v
+React Frontend
+       |
+       v
+Node/Express REST API
+       |
+       v
+PostgreSQL
+
+Include trust boundaries.
+
+==================================================
+19. TESTS
+==================================================
+
+Create automated tests for:
+
+- application startup;
+- login;
+- normal RBAC;
+- database seed;
+- normal employee functionality;
+- manager functionality;
+- HR functionality;
+- admin functionality.
+
+Also create a separate lab-maintainer test suite verifying that each intentional vulnerability remains present after future code changes.
+
+Store these tests separately from normal functional/security tests.
+
+The vulnerability verification tests must never be exposed through the application UI.
+
+==================================================
+20. DEVELOPMENT APPROACH
+==================================================
+
+Do NOT attempt to generate the entire application blindly in one operation.
+
+Work in phases.
+
+PHASE 1
+Generate:
+- architecture;
+- repository structure;
+- database schema;
+- threat/lab design;
+- API specification.
+
+Show me the plan before major implementation.
+
+PHASE 2
+Build:
+- database;
+- seed data;
+- authentication;
+- roles;
+- backend APIs.
+
+PHASE 3
+Build:
+- React UI;
+- dashboards;
+- employee functions;
+- manager functions;
+- HR/admin functions.
+
+PHASE 4
+Implement the eight deliberate vulnerabilities one by one.
+
+After implementing each vulnerability:
+- document it in assessor/ANSWER_KEY.md;
+- create a maintainer verification test;
+- verify unrelated endpoints remain secure.
+
+PHASE 5
+Build:
+- Docker environment;
+- reset mechanism;
+- audit logging;
+- candidate documentation;
+- assessor documentation.
+
+PHASE 6
+Run:
+- functional tests;
+- intentional vulnerability verification;
+- Docker build;
+- clean reset;
+- end-to-end validation.
+
+==================================================
+21. FINAL QUALITY CHECK
+==================================================
+
+Before declaring the project complete verify:
+
+[ ] Application starts with one Docker Compose command.
+[ ] All 75 synthetic employees are created.
+[ ] Four roles work correctly.
+[ ] Candidate accounts work.
+[ ] All eight intended vulnerabilities are reproducible.
+[ ] No additional obvious critical vulnerabilities were unintentionally introduced.
+[ ] Assessor answer key exists.
+[ ] Candidate brief does not reveal vulnerabilities.
+[ ] Audit logging works.
+[ ] Reset script works.
+[ ] Environment resets to identical baseline.
+[ ] API documentation works.
+[ ] VAPT report template exists.
+[ ] Scoring guide totals 100.
+[ ] AWS deployment instructions exist.
+[ ] Azure deployment instructions exist.
+[ ] Public Internet exposure warning is prominent.
+[ ] No real personal data exists.
+[ ] No production credentials exist.
+
+==================================================
+22. IMPORTANT DESIGN PRINCIPLE
+==================================================
+
+This application is intended to distinguish:
+
+“A candidate who knows how to run security tools”
+
+from:
+
+“A cybersecurity professional who understands scope, application behaviour, attack surfaces, authorization, APIs, manual validation, business impact, evidence and professional penetration-testing methodology.”
+
+Therefore:
+
+Do not make vulnerabilities visually obvious.
+
+Do not label vulnerable routes.
+
+Do not put hints in HTML comments.
+
+Do not put vulnerability names in frontend JavaScript variable names.
+
+Do not expose assessor documentation through the web server.
+
+Do not expose the number of vulnerabilities to candidates.
+
+Use realistic application behaviour and realistic synthetic HR data.
+
+==================================================
+23. START NOW
+==================================================
+
+Start with PHASE 1 only.
+
+Before writing the complete application, produce:
+
+1. Proposed architecture
+2. Repository structure
+3. Database schema
+4. API inventory
+5. Role/permission matrix
+6. Vulnerability placement matrix
+7. Docker architecture
+8. Implementation sequence
+9. Any technical concerns that could cause unintended vulnerabilities
+
+Wait for my approval before proceeding to PHASE 2.

@@ -1,0 +1,19 @@
+FROM node:24-bookworm-slim AS base
+RUN npm install --global pnpm@10.26.1
+WORKDIR /app
+
+FROM base AS build
+COPY . .
+RUN pnpm install --frozen-lockfile
+RUN pnpm run typecheck:libs && pnpm --filter @workspace/api-server run build
+
+FROM base
+ENV NODE_ENV=production PORT=8080
+COPY --from=build /app/node_modules /app/node_modules
+COPY --from=build /app/package.json /app/pnpm-workspace.yaml /app/
+COPY --from=build /app/lib/db /app/lib/db
+COPY --from=build /app/artifacts/api-server /app/artifacts/api-server
+COPY --from=build /app/docs/PHASE2_SETUP.md /app/docs/PHASE2_SETUP.md
+COPY --from=build /app/artifacts/peoplematrix/src/App.tsx /app/artifacts/peoplematrix/src/App.tsx
+EXPOSE 8080
+CMD ["sh", "/app/artifacts/api-server/entrypoint.sh"]

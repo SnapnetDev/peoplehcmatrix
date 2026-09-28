@@ -1,0 +1,373 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 0.2.0
+  description: PeopleMatrix synthetic HR lab API. Assessment details are not published here.
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - { name: health }
+  - { name: auth }
+  - { name: employees }
+  - { name: hr }
+  - { name: admin }
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      responses:
+        "200": { description: Healthy, content: { application/json: { schema: { $ref: "#/components/schemas/HealthStatus" } } } }
+  /v1/auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/LoginInput" } } } }
+      responses:
+        "200": { description: Signed in, content: { application/json: { schema: { $ref: "#/components/schemas/LoginResult" } } } }
+        "401": { description: Invalid credentials }
+  /v1/auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      security: [{ bearerAuth: [] }]
+      responses:
+        "204": { description: Signed out }
+  /v1/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Current account, content: { application/json: { schema: { $ref: "#/components/schemas/Account" } } } }
+  /v1/employees:
+    get:
+      operationId: listEmployees
+      tags: [employees]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: q, in: query, schema: { type: string } }
+        - { name: department, in: query, schema: { type: string } }
+      responses:
+        "200": { description: Employee directory, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/EmployeeSummary" } } } } }
+    post:
+      operationId: createEmployee
+      tags: [employees]
+      security: [{ bearerAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/EmployeeInput" } } } }
+      responses:
+        "201": { description: Created employee, content: { application/json: { schema: { $ref: "#/components/schemas/EmployeeProfile" } } } }
+  /v1/employees/search:
+    get:
+      operationId: searchEmployees
+      tags: [employees]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: department, in: query, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Matching directory entries, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/EmployeeSummary" } } } } }
+  /v1/employees/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    get:
+      operationId: getEmployee
+      tags: [employees]
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Employee profile, content: { application/json: { schema: { $ref: "#/components/schemas/EmployeeProfile" } } } }
+    put:
+      operationId: updateEmployee
+      tags: [employees]
+      security: [{ bearerAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/EmployeeUpdate" } } } }
+      responses:
+        "200": { description: Updated profile, content: { application/json: { schema: { $ref: "#/components/schemas/EmployeeProfile" } } } }
+  /v1/employees/{id}/payroll:
+    get:
+      operationId: getEmployeePayroll
+      tags: [hr]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Employee payroll, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/PayrollRecord" } } } } }
+  /v1/payroll:
+    get:
+      operationId: listPayroll
+      tags: [hr]
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Payroll records visible to this role, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/PayrollRecord" } } } } }
+  /v1/leave:
+    get:
+      operationId: listLeave
+      tags: [hr]
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Leave records visible to this role, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/LeaveRecord" } } } } }
+    post:
+      operationId: createLeave
+      tags: [hr]
+      security: [{ bearerAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/LeaveInput" } } } }
+      responses:
+        "201": { description: Requested, content: { application/json: { schema: { $ref: "#/components/schemas/LeaveRecord" } } } }
+  /v1/leave/{id}:
+    put:
+      operationId: updateLeave
+      tags: [hr]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/LeaveDecision" } } } }
+      responses:
+        "200": { description: Reviewed, content: { application/json: { schema: { $ref: "#/components/schemas/LeaveRecord" } } } }
+  /v1/performance:
+    get:
+      operationId: listPerformance
+      tags: [hr]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: employeeId, in: query, schema: { type: integer } }
+      responses:
+        "200": { description: Performance records, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/PerformanceRecord" } } } } }
+  /v1/performance/comments:
+    post:
+      operationId: createPerformanceComment
+      tags: [hr]
+      security: [{ bearerAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/PerformanceInput" } } } }
+      responses:
+        "201": { description: Added, content: { application/json: { schema: { $ref: "#/components/schemas/PerformanceRecord" } } } }
+  /v1/manager/team:
+    get:
+      operationId: getManagerTeam
+      tags: [hr]
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Direct reports, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/EmployeeSummary" } } } } }
+  /v1/reports:
+    get:
+      operationId: getReports
+      tags: [hr]
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: HR summary, content: { application/json: { schema: { $ref: "#/components/schemas/ReportSummary" } } } }
+  /v1/admin/users:
+    get:
+      operationId: listUsers
+      tags: [admin]
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: User accounts, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Account" } } } } }
+    post:
+      operationId: createUser
+      tags: [admin]
+      security: [{ bearerAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/UserInput" } } } }
+      responses:
+        "201": { description: Created account, content: { application/json: { schema: { $ref: "#/components/schemas/Account" } } } }
+  /v1/admin/users/{id}:
+    put:
+      operationId: updateUser
+      tags: [admin]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/UserUpdate" } } } }
+      responses:
+        "200": { description: Updated account, content: { application/json: { schema: { $ref: "#/components/schemas/Account" } } } }
+  /v1/admin/settings:
+    get:
+      operationId: listSettings
+      tags: [admin]
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Application settings, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Setting" } } } } }
+    put:
+      operationId: updateSetting
+      tags: [admin]
+      security: [{ bearerAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/Setting" } } } }
+      responses:
+        "200": { description: Updated setting, content: { application/json: { schema: { $ref: "#/components/schemas/Setting" } } } }
+  /v1/audit:
+    get:
+      operationId: listAudit
+      tags: [admin]
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Recent audit events, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/AuditEvent" } } } } }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  schemas:
+    HealthStatus:
+      type: object
+      properties: { status: { type: string } }
+      required: [status]
+    LoginInput:
+      type: object
+      properties: { email: { type: string, format: email }, password: { type: string } }
+      required: [email, password]
+    LoginResult:
+      type: object
+      properties: { token: { type: string }, user: { $ref: "#/components/schemas/Account" } }
+      required: [token, user]
+    Account:
+      type: object
+      properties:
+        id: { type: integer }
+        email: { type: string }
+        role: { type: string, enum: [EMPLOYEE, MANAGER, HR_ADMIN, SYSTEM_ADMIN] }
+        employeeId: { type: ["integer", "null"] }
+        active: { type: boolean }
+      required: [id, email, role, employeeId, active]
+    EmployeeSummary:
+      type: object
+      properties:
+        id: { type: integer }
+        firstName: { type: string }
+        lastName: { type: string }
+        email: { type: string }
+        jobTitle: { type: string }
+        department: { type: string }
+        managerId: { type: ["integer", "null"] }
+      required: [id, firstName, lastName, email, jobTitle, department, managerId]
+    EmployeeProfile:
+      allOf:
+        - { $ref: "#/components/schemas/EmployeeSummary" }
+        - type: object
+          properties:
+            phone: { type: string }
+            employmentDate: { type: string }
+            employmentStatus: { type: string }
+            address: { type: string }
+            emergencyContact: { type: string }
+            leaveBalance: { type: integer }
+          required: [phone, employmentDate, employmentStatus, address, emergencyContact, leaveBalance]
+    EmployeeInput:
+      type: object
+      properties:
+        firstName: { type: string, minLength: 1 }
+        lastName: { type: string, minLength: 1 }
+        email: { type: string, format: email }
+        phone: { type: string }
+        jobTitle: { type: string }
+        department: { type: string }
+        managerId: { type: ["integer", "null"] }
+        employmentDate: { type: string, format: date }
+        salary: { type: string }
+        bankName: { type: string }
+        bankAccount: { type: string }
+        syntheticNin: { type: string }
+        address: { type: string }
+        emergencyContact: { type: string }
+      required: [firstName, lastName, email, phone, jobTitle, department, employmentDate, salary, bankName, bankAccount, syntheticNin, address, emergencyContact]
+    EmployeeUpdate:
+      type: object
+      properties:
+        phone: { type: string }
+        address: { type: string }
+        emergencyContact: { type: string }
+        jobTitle: { type: string }
+        department: { type: string }
+        managerId: { type: ["integer", "null"] }
+        employmentStatus: { type: string }
+        salary: { type: string }
+        bankName: { type: string }
+        bankAccount: { type: string }
+        syntheticNin: { type: string }
+    PayrollRecord:
+      type: object
+      properties:
+        id: { type: integer }
+        employeeId: { type: integer }
+        period: { type: string }
+        gross: { type: string }
+        deductions: { type: string }
+        net: { type: string }
+        paymentDate: { type: string }
+      required: [id, employeeId, period, gross, deductions, net, paymentDate]
+    LeaveInput:
+      type: object
+      properties:
+        type: { type: string }
+        startsOn: { type: string, format: date }
+        endsOn: { type: string, format: date }
+        reason: { type: string }
+      required: [type, startsOn, endsOn, reason]
+    LeaveDecision:
+      type: object
+      properties: { status: { type: string, enum: [APPROVED, REJECTED] } }
+      required: [status]
+    LeaveRecord:
+      type: object
+      properties:
+        id: { type: integer }
+        employeeId: { type: integer }
+        type: { type: string }
+        startsOn: { type: string }
+        endsOn: { type: string }
+        reason: { type: string }
+        status: { type: string }
+        reviewerId: { type: ["integer", "null"] }
+        createdAt: { type: string }
+      required: [id, employeeId, type, startsOn, endsOn, reason, status, reviewerId, createdAt]
+    PerformanceInput:
+      type: object
+      properties:
+        employeeId: { type: integer }
+        period: { type: string }
+        rating: { type: integer, minimum: 1, maximum: 5 }
+        comment: { type: string }
+      required: [employeeId, period, rating, comment]
+    PerformanceRecord:
+      type: object
+      properties:
+        id: { type: integer }
+        employeeId: { type: integer }
+        reviewerId: { type: integer }
+        period: { type: string }
+        rating: { type: integer }
+        comment: { type: string }
+        createdAt: { type: string }
+      required: [id, employeeId, reviewerId, period, rating, comment, createdAt]
+    ReportSummary:
+      type: object
+      properties:
+        employeeCount: { type: integer }
+        departmentCounts: { type: object, additionalProperties: { type: integer } }
+        pendingLeave: { type: integer }
+      required: [employeeCount, departmentCounts, pendingLeave]
+    UserInput:
+      type: object
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 12 }
+        role: { type: string, enum: [EMPLOYEE, MANAGER, HR_ADMIN, SYSTEM_ADMIN] }
+        employeeId: { type: ["integer", "null"] }
+      required: [email, password, role]
+    UserUpdate:
+      type: object
+      properties:
+        role: { type: string, enum: [EMPLOYEE, MANAGER, HR_ADMIN, SYSTEM_ADMIN] }
+        active: { type: boolean }
+        password: { type: string, minLength: 12 }
+    Setting:
+      type: object
+      properties: { key: { type: string }, value: { type: string } }
+      required: [key, value]
+    AuditEvent:
+      type: object
+      properties:
+        id: { type: integer }
+        createdAt: { type: string }
+        userId: { type: ["integer", "null"] }
+        ip: { type: ["string", "null"] }
+        method: { type: string }
+        endpoint: { type: string }
+        action: { type: string }
+        status: { type: integer }
+      required: [id, createdAt, userId, ip, method, endpoint, action, status]
