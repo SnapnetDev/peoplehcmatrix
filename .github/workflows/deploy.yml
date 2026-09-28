@@ -1,0 +1,115 @@
+name: Deploy to lab VM
+
+# Ships the Docker Compose lab to one VM over SSH with password auth.
+# Secrets, variables, VM prerequisites and rollback behaviour: docs/DEPLOY.md.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One deploy at a time; a newer push waits instead of cancelling a half-finished deploy.
+concurrency:
+  group: deploy-lab-vm
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy
+    # Set the DEPLOY_RUNNER variable (e.g. "self-hosted") when the VM's SSH port is only
+    # reachable from inside its private network, as the README recommends.
+    runs-on: ${{ vars.DEPLOY_RUNNER || 'ubuntu-latest' }}
+    environment: lab
+    timeout-minutes: 30
+    env:
+      SSHPASS: ${{ secrets.VM_PASSWORD }}
+      VM_HOST: ${{ secrets.VM_HOST }}
+      VM_USER: ${{ secrets.VM_USER }}
+      VM_PORT: ${{ secrets.VM_PORT || '22' }}
+      # Relative paths resolve against the VM user's home directory.
+      APP_DIR: ${{ vars.DEPLOY_APP_DIR || 'peoplematrix-lab' }}
+      KEEP_RELEASES: ${{ vars.DEPLOY_KEEP_RELEASES || '3' }}
+      RELEASE_ID: ${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - name: Check required secrets
+        run: |
+          missing=()
+          [ -n "$VM_HOST" ] || missing+=(VM_HOST)
+          [ -n "$VM_USER" ] || missing+=(VM_USER)
+          [ -n "$SSHPASS" ] || missing+=(VM_PASSWORD)
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing secrets: ${missing[*]} (Settings > Secrets and variables > Actions)"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - name: Test deploy script
+        run: bash scripts/deploy/remote-deploy.test.sh
+
+      - name: Install sshpass
+        run: command -v sshpass >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq sshpass; }
+
+      - name: Configure SSH
+        env:
+          VM_SSH_KNOWN_HOSTS: ${{ secrets.VM_SSH_KNOWN_HOSTS }}
+        run: |
+          # Private to this job, so a self-hosted runner's own ~/.ssh is never touched.
+          ssh_dir="$RUNNER_TEMP/lab-ssh"
+          mkdir -p "$ssh_dir" && chmod 700 "$ssh_dir"
+          if [ -n "$VM_SSH_KNOWN_HOSTS" ]; then
+            printf '%s\n' "$VM_SSH_KNOWN_HOSTS" > "$ssh_dir/known_hosts"
+          else
+            echo "::warning::VM_SSH_KNOWN_HOSTS is not set; trusting whatever host key the VM presents right now. Pin it (docs/DEPLOY.md)."
+            ssh-keyscan -p "$VM_PORT" "$VM_HOST" > "$ssh_dir/known_hosts"
+          fi
+          cat > "$ssh_dir/config" <<EOF
+          Host lab-vm
+            HostName $VM_HOST
+            Port $VM_PORT
+            User $VM_USER
+            UserKnownHostsFile $ssh_dir/known_hosts
+            StrictHostKeyChecking yes
+            PubkeyAuthentication no
+            PreferredAuthentications password,keyboard-interactive
+            ConnectTimeout 20
+            ServerAliveInterval 30
+          EOF
+          chmod 600 "$ssh_dir/config" "$ssh_dir/known_hosts"
+          echo "SSH_CONFIG=$ssh_dir/config" >> "$GITHUB_ENV"
+          sshpass -e ssh -F "$ssh_dir/config" lab-vm true
+
+      - name: Upload release
+        run: |
+          # The private answer key (assessor/) and other non-build material never leave CI.
+          release_dir=$(printf '%q' "$APP_DIR/releases/$RELEASE_ID")
+          git archive --format=tar.gz HEAD -- . \
+              ':(exclude)assessor' ':(exclude)attached_assets' ':(exclude).agents' \
+            | sshpass -e ssh -F "$SSH_CONFIG" lab-vm "umask 077 && mkdir -p $release_dir && tar -xzf - -C $release_dir"
+
+      - name: Write shared .env from secrets
+        env:
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+          LAB_PORT: ${{ vars.LAB_PORT || '8088' }}
+        run: |
+          if [ -z "$POSTGRES_PASSWORD" ] || [ -z "$SESSION_SECRET" ]; then
+            echo "POSTGRES_PASSWORD / SESSION_SECRET secrets not set; keeping the .env already on the VM."
+            exit 0
+          fi
+          shared_dir=$(printf '%q' "$APP_DIR/shared")
+          printf 'POSTGRES_PASSWORD=%s\nSESSION_SECRET=%s\nLAB_PORT=%s\n' \
+            "$POSTGRES_PASSWORD" "$SESSION_SECRET" "$LAB_PORT" \
+            | sshpass -e ssh -F "$SSH_CONFIG" lab-vm "umask 077 && mkdir -p $shared_dir && cat > $shared_dir/.env"
+
+      - name: Build, start and health-check
+        run: |
+          args=$(printf '%q ' "$APP_DIR" "$RELEASE_ID" "$KEEP_RELEASES")
+          sshpass -e ssh -F "$SSH_CONFIG" lab-vm "bash -s -- $args" < scripts/deploy/remote-deploy.sh
+
+      - name: Remove SSH config
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/lab-ssh"

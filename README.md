@@ -83,6 +83,8 @@ docker compose --env-file .env up --build -d
 
 The backend schema push and idempotent seed run at startup. Check `docker compose --env-file .env ps` and wait for the frontend, backend, and PostgreSQL health checks to report healthy before opening the candidate session. Confirm that the only published application binding is on `127.0.0.1`; backend and PostgreSQL must remain unpublished. The containers have **not** been built or run in Replit; verify this on the isolated lab VM before use. Run the private maintainer suite inside the isolated backend container as described in the Phase 6 validation record. The backend image contains only the lab setup fixture and maintainer test, not the private assessor answer key or scoring guide.
 
+To deploy automatically from GitHub Actions instead (push to `main` or a manual run), see [`docs/DEPLOY.md`](docs/DEPLOY.md). It covers the required secrets, the VM layout, and rollback.
+
 From an authorized workstation, create an SSH local port forward through the permitted private route:
 
 ```sh
